@@ -3,6 +3,9 @@ use tonic::transport::Server;
 
 pub mod proto {
     tonic::include_proto!("calculator");
+
+    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = 
+    tonic::include_file_descriptor_set!("calculator_descriptor");
 }
 
 #[derive(Debug, Default)]
@@ -33,8 +36,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let calc = CalculatorService::default();
 
+    let refl_service = tonic_reflection::server::Builder::configure()
+    .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
+    .build()?;
+
     Server::builder()
     .add_service(CalculatorServer::new(calc))
+    .add_service(refl_service)
     .serve(addr)
     .await?;
 
