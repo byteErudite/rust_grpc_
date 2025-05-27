@@ -34,14 +34,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let addr = "127.0.0.1:50051".parse()?;
 
-    let calc = CalculatorService::default();
+    let calculator_service = CalculatorService::default();
 
     let refl_service = tonic_reflection::server::Builder::configure()
     .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
     .build()?;
 
     Server::builder()
-    .add_service(CalculatorServer::new(calc))
+    .add_service(CalculatorServer::new(calculator_service))
     .add_service(refl_service)
     .serve(addr)
     .await?;

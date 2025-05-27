@@ -1,5 +1,4 @@
-use std::error::Error ;
-use std::path::Path;
+use std::error::Error;
 use std::{env, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn Error>> {
