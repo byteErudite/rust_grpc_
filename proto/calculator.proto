@@ -3,7 +3,8 @@ syntax = "proto3";
 package calculator;
 
 service Calculator {
-    rpc Add (CalculationRequest) returns (CalculaionResponse);
+    rpc Add (CalculationRequest) returns (CalculationResponse);
+    rpc Divide (CalculationRequest) returns (CalculationResponse);
 }
 
 message CalculationRequest {
@@ -11,6 +12,6 @@ message CalculationRequest {
     int64 b = 2; 
 }
 
-message CalculaionResponse {
+message CalculationResponse {
     int64 result = 1;
 }

@@ -1,5 +1,5 @@
 use proto::calculator_server::{Calculator, CalculatorServer};
-use tonic::transport::Server;
+use tonic::{transport::Server, Request};
 
 pub mod proto {
     tonic::include_proto!("calculator");
@@ -16,15 +16,30 @@ impl Calculator for CalculatorService {
     async fn add(
         &self, 
         request: tonic::Request<proto::CalculationRequest>,
-    ) -> Result<tonic::Response<proto::CalculaionResponse>, tonic::Status> {
+    ) -> Result<tonic::Response<proto::CalculationResponse>, tonic::Status> {
 
         print!("Got a request: {:?}", request);
         let input = request.get_ref();
 
-        let response = proto::CalculaionResponse {
+        let response = proto::CalculationResponse {
             result : input.a + input.b,
         };
 
+        Ok(tonic::Response::new(response))
+    }
+
+    async fn divide(
+        &self,
+        request: tonic::Request<proto::CalculationRequest>,
+    ) -> Result<tonic::Response<proto::CalculationResponse>, tonic::Status> {
+
+        let inner_request = request.get_ref();
+        if inner_request.b == 0 {
+            return Err(tonic::Status::invalid_argument("Denominator cannot be zero"))
+        }
+        let response = proto::CalculationResponse {
+            result: inner_request.a/inner_request.b,
+        };
         Ok(tonic::Response::new(response))
     }
 }
