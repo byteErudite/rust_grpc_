@@ -1,5 +1,7 @@
 use proto::calculator_server::{Calculator, CalculatorServer};
-use tonic::{transport::Server, Request};
+use proto::audit_server::{Audit, AuditServer};
+use tonic::{transport::Server};
+
 
 pub mod proto {
     tonic::include_proto!("calculator");
@@ -8,8 +10,42 @@ pub mod proto {
     tonic::include_file_descriptor_set!("calculator_descriptor");
 }
 
+type State = std::sync::Arc<tokio::sync::RwLock<u64>>;
+
 #[derive(Debug, Default)]
-struct CalculatorService {}
+struct AuditService {
+    state:State,
+}
+
+#[tonic::async_trait]
+impl Audit for AuditService {
+   async fn get_request_count(
+    &self,
+    _request: tonic::Request<proto::GetCountRequest>,
+   ) -> Result<tonic::Response<proto::CounterResponse>, tonic::Status> {
+        
+        let count = self.state.read().await;
+        println!("inside counter service: {}", *count);
+        let response = proto::CounterResponse {
+            count: *count,
+        };
+        Ok(tonic::Response::new(response))
+   }
+}
+
+
+#[derive(Debug, Default)]
+struct CalculatorService {
+    state:State,
+}
+
+impl CalculatorService {
+    async fn increment(&self) -> () {
+        let mut count = self.state.write().await;
+        *count += 1;
+        println!("Request count : {}", *count);
+    }
+}
 
 #[tonic::async_trait]
 impl Calculator for CalculatorService {
@@ -18,7 +54,8 @@ impl Calculator for CalculatorService {
         request: tonic::Request<proto::CalculationRequest>,
     ) -> Result<tonic::Response<proto::CalculationResponse>, tonic::Status> {
 
-        print!("Got a request: {:?}", request);
+        println!("Got a request: {:?}", request);
+        self.increment().await;
         let input = request.get_ref();
 
         let response = proto::CalculationResponse {
@@ -33,6 +70,7 @@ impl Calculator for CalculatorService {
         request: tonic::Request<proto::CalculationRequest>,
     ) -> Result<tonic::Response<proto::CalculationResponse>, tonic::Status> {
 
+        self.increment().await;
         let inner_request = request.get_ref();
         if inner_request.b == 0 {
             return Err(tonic::Status::invalid_argument("Denominator cannot be zero"))
@@ -49,14 +87,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let addr = "127.0.0.1:50051".parse()?;
 
-    let calculator_service = CalculatorService::default();
+    let initial_state = State::default();
+    let calculator_service = CalculatorService {
+        state: initial_state.clone(),
+    };
+    let audit_service = AuditService {
+        state: initial_state.clone(),
+    };
 
     let refl_service = tonic_reflection::server::Builder::configure()
     .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
     .build()?;
+    
 
     Server::builder()
     .add_service(CalculatorServer::new(calculator_service))
+    .add_service(AuditServer::new(audit_service))
     .add_service(refl_service)
     .serve(addr)
     .await?;

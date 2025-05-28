@@ -1,7 +1,6 @@
 use std::error::Error;
 
 use proto::calculator_client::CalculatorClient;
-use tonic::client;
 
 pub mod proto {
     tonic::include_proto!("calculator");
