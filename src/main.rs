@@ -1,7 +1,18 @@
 use proto::calculator_server::{Calculator, CalculatorServer};
 use proto::audit_server::{Audit, AuditServer};
+use tonic::metadata::MetadataValue;
 use tonic::{transport::Server};
+use tonic::{Request, Status};
 
+
+fn check_auth(req: Request<()>) -> Result<Request<()>, Status> {
+    let required_token: MetadataValue<_> = "Bearer some-secret-token".parse().unwrap();
+
+    match req.metadata().get("authorization") {
+        Some(request_token) if request_token == required_token => Ok(req),
+        _ => Err(Status::unauthenticated("No valid auth token present")),
+    }
+}
 
 pub mod proto {
     tonic::include_proto!("calculator");
@@ -102,7 +113,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
     .add_service(CalculatorServer::new(calculator_service))
-    .add_service(AuditServer::new(audit_service))
+    .add_service(AuditServer::with_interceptor(audit_service, check_auth))
+    // for more powerful middleware(interceptor above) use tower instead of tonic
     .add_service(refl_service)
     .serve(addr)
     .await?;
